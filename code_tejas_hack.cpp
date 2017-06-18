@@ -19,7 +19,7 @@ TODO : create timers and send status to adjacent nodes when timer expires.
 #include<semaphore.h>
 #include<pthread.h>
 #include<mqueue.h>
-#inlcude<queue>
+#include<queue>
 
 #define MAXNODES 50  //static graph - num of nodes const and known
 #define INF 10000
