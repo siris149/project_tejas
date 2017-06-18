@@ -1,0 +1,229 @@
+Design Document :
+
+Problem statement :
+Graph Algorithms
+You are given a set of interacting processes that exchange neighbor adjacency data. The process works like this:
+
+Each process reads neighbor information and cost from a file
+Each process builds a network graph from all nodes using this neighbor information
+Given this information answer the following questions:
+
+Find the shortest path from any to any node given.
+Find the minimum spanning tree.
+Also, reconfigure the network connectivity graph on a node when a node (process) dies or an edge is lost
+
+Issues to be handled:
+
+Nodes (process) can startup and die at any point of time
+No central manager for the set of nodes (process)
+_______________________________________________________________________________________________________________________
+
+Basic Understanding :
+
+Each node is identified by an identical process.
+Interations need to be done between processes.
+A nodes build its graph by receiving data from all nodes.
+
+_______________________________________________________________________________________________________________________
+Design :
+
+Process : 
+int main();
+	one process per node.	
+
+
+
+Threads : 
+	two threads per node. Two threads should be running in parallel.
+	Thread 1 :
+int main();
+	Takes inputs from user to show mst, shortest path etc from user.
+	Thread 2 : 
+void events_thread(void *param);		
+	Receives updates of the graph from adj list.
+_______________________________________________________________________________________________________________________	
+
+IPC Mechanism :
+	one message queue per process.
+	Details of the message queue can be obtained from user or can be stored in a file.
+	
+_______________________________________________________________________________________________________________________
+Structures used : adjacencylist structure and edgelist structure
+
+1 . A strucure to represent the adjacent node details
+struct adjnode        
+{
+	int dest;
+	int cost;
+};
+
+2. A structure to store the number of adjacent nodes and array of all adjacent nodes.
+struct adjlist {                    
+	int v;
+	adjnode nodes[MAX_NODES];
+};
+
+3. The below variable alist is an array of type adjlist.
+   Array is indexed by vertex number.
+   Each element in array stores the "adjlist strucure" (adjacency list) of vertex indexed.
+	
+adjlist alist[MAX_NODES];
+
+4. Edge strucure
+struct edge             
+{
+	int sor;
+	int dest;
+	int cost;
+
+};
+
+5. struture that holds e number of edges.
+struct edgelist                   
+{
+	int e;
+	edge edges[MAX_NODES];
+};
+
+6. format of buffer of exchanging data on queues
+struct queuebuffer    
+{
+	//buffertype type;     --------- to identify the type of message 1. alive status  2. alist structure
+	int sending_node;
+	adjlist alist[MAX_NODES];	
+
+};
+___________________________________________________________________________________________________________________________
+Global Variables:
+	
+_______________________________________________________________________________________________________________________
+
+Functions : 
+
+Params
+Return
+Desc
+int main();
+
+Desc :  starts a node
+Params:
+Return :
+
+_______________________________________________________________________________________________________________________
+
+int application();
+
+
+Params :
+Return :
+Desc  : Starts the Menu for the user.
+		Menu iterates in a loop.
+		process is stopped when user selects 'exit'
+
+_______________________________________________________________________________________________________________________
+void configure();
+
+Desc :
+
+	Gets the node identifier and queuename to be started from user(or file).
+	Creates the queue with required attributes.
+	Starts the thread "events_thread"
+	Initialize semaphore.
+	Creates the timer.
+	
+_______________________________________________________________________________________________________________________	
+void addAdj();
+
+Desc :
+	get node identifier and queuename of all adj nodes from user(or from file)
+	update the global var "alist array" 
+	Send to all the adjacent nodes the updated "alist array" using their respective queues.
+	
+_______________________________________________________________________________________________________________________	
+void shortest();
+
+Desc :
+
+_______________________________________________________________________________________________________________________	
+void mst();
+
+Desc:
+	Implemented using "priority_queue" of STL by converting it to "minheap"
+_______________________________________________________________________________________________________________________
+void events_thread(void *param);
+
+Desc : 
+
+	This thread is started after the queue is created.
+	
+	It is in a infinite while loop.
+	If a message is received in the queue , process the message and again loop.
+	Updates from the adjacent nodes when they come up or any changes  in network received in this queue and changes are made accordingly to the alist structure.
+	
+	queuebuffer *buffer;
+	
+	buffer contains "alist array" send by an adjacent node.
+	
+	update the fields of the "alist array" of the current process by checking all the elements.
+___________________________________________________________________________________________________________________________
+
+int updateadjlist(int node, int adj, int cost);
+
+params : node  : represents the vertex identifier to be updated
+		 adj   : vertex identifier of the adj node to be added
+		 cost  : cost of the coreespoing edge
+		 
+description : 
+			adds the edge details into the global "struct edgelist" mst
+			Semaphore is used to avoid read of the global alist strucutre when this func is updating.
+___________________________________________________________________________________________________________________________			
+
+void exit();
+
+params :
+return :
+Desc :
+		clean up.
+		Destroy the "events_thread".
+		Destroy semaphore.
+		Discard messages and close the queue.
+		
+_______________________________________________________________________________________________________________________	
+
+Not implemented :
+
+How the updates of the node going down is sent to adjacent nodes.
+
+Idea :
+		create and start a timer each process.
+		Send "alive" status to all adjacent nodes when timer expires and reset timer.
+		
+		Check if the "alive" status was received through queue from all adjacent nodes after timer expires.
+		If status not received , consider node as down and update the adjlist structure of corresponding node to "zeros"
+		Send updated "alist" to remaining all adjacent lists.
+		
+___________________________________________________________________________________________________________________________		
+
+int addedgetomst(int s, int d);
+
+int updategraph();
+_______________________________________________________________________________________________________________________
+int send_updates_adjlist(int node);	
+
+params : node : vertex number
+
+Desc : traverse adjlist of the vertex represented by "node" and send the "alist" to the respective queues.
+___________________________________________________________________________________________________________________________		
+
+class Compare
+
+Desc : 
+		class with operator() overloaded
+		operator()  --- inputs two edges
+						output greater than operation based on the cost of the edge.
+		used in mst().
+
+_______________________________________________________________________________________________________________________		
+
+
+		
